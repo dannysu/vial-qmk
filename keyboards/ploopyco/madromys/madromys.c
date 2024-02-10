@@ -41,7 +41,7 @@
 #    define PLOOPY_DRAGSCROLL_SEMAPHORE 4
 #endif
 #ifndef PLOOPY_DRAGSCROLL_MOMENTARY
-#    define PLOOPY_DRAGSCROLL_MOMENTARY 1
+#    define PLOOPY_DRAGSCROLL_MOMENTARY 0
 #endif
 #ifndef PLOOPY_DRAGSCROLL_INVERT
 #    define PLOOPY_DRAGSCROLL_INVERT 1
@@ -119,7 +119,7 @@ bool process_record_kb(uint16_t keycode, keyrecord_t* record) {
     }
 
     if (keycode == DRAG_SCROLL) {
-#ifndef PLOOPY_DRAGSCROLL_MOMENTARY
+#if !PLOOPY_DRAGSCROLL_MOMENTARY
         if (record->event.pressed)
 #endif
         {
