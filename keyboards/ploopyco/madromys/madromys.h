@@ -24,6 +24,7 @@ typedef union {
     uint32_t raw;
     struct {
         uint8_t dpi_config;
+        uint8_t scroll_divisor_idx;
     };
 } keyboard_config_t;
 _Static_assert(sizeof(keyboard_config_t) == sizeof(uint32_t), "keyboard_config_t size mismatch compared to EEPROM area");
@@ -38,4 +39,7 @@ enum ploopy_keycodes {
     DPI_3,
     DPI_4,
     DRAG_SCROLL,
+    SCROLL_DIVISOR_1,
+    SCROLL_DIVISOR_2,
+    SCROLL_DIVISOR_3,
 };

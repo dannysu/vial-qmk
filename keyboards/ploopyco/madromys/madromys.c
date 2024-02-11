@@ -43,10 +43,22 @@
 #ifndef PLOOPY_DRAGSCROLL_ANY_MOUSE_KEYCODE_TOGGLES_OFF
 #    define PLOOPY_DRAGSCROLL_ANY_MOUSE_KEYCODE_TOGGLES_OFF 0
 #endif
+#ifndef PLOOPY_SCROLL_DIVISORS
+#    define PLOOPY_SCROLL_DIVISORS \
+        { 256.0, 128.0, 64.0 }
+#    ifndef PLOOPY_SCROLL_DIVISOR_DEFAULT
+#        define PLOOPY_SCROLL_DIVISOR_DEFAULT 1
+#    endif
+#endif
+#ifndef PLOOPY_SCROLL_DIVISOR_DEFAULT_IDX
+#    define PLOOPY_SCROLL_DIVISOR_DEFAULT_IDX 0
+#endif
 
 keyboard_config_t keyboard_config;
 uint16_t          dpi_array[] = PLOOPY_DPI_OPTIONS;
 #define DPI_OPTION_SIZE (sizeof(dpi_array) / sizeof(uint16_t))
+float             scroll_divisors[] = PLOOPY_SCROLL_DIVISORS;
+#define NUM_SCROLL_DIVISORS (sizeof(scroll_divisors) / sizeof(float))
 
 // TODO: Implement libinput profiles
 // https://wayland.freedesktop.org/libinput/doc/latest/pointer-acceleration.html
@@ -61,13 +73,13 @@ uint16_t last_keycode_while_in_drag_scroll = KC_NO;
 
 float scroll_accumulated_h = 0;
 float scroll_accumulated_v = 0;
-float scroll_divisor = 128.0;
 
 report_mouse_t pointing_device_task_kb(report_mouse_t mouse_report) {
     if (is_drag_scroll) {
         // Calculate and accumulate scroll values based on mouse movement and divisors
-        scroll_accumulated_h += (float)mouse_report.x / scroll_divisor;
-        scroll_accumulated_v += (float)mouse_report.y / scroll_divisor;
+        float divisor = scroll_divisors[keyboard_config.scroll_divisor_idx];
+        scroll_accumulated_h += (float)mouse_report.x / divisor;
+        scroll_accumulated_v += (float)mouse_report.y / divisor;
 
         // Assign integer parts of accumulated scroll values to the mouse report
         mouse_report.h = (int8_t)scroll_accumulated_h;
@@ -124,12 +136,22 @@ bool process_record_kb(uint16_t keycode, keyrecord_t* record) {
             keyboard_config.dpi_config = 2;
         } else if (keycode == DPI_4) {
             keyboard_config.dpi_config = 3;
-	}
+        }
 
-	if (old_dpi_config != keyboard_config.dpi_config) {
+        uint8_t old_scroll_divisor_idx = keyboard_config.scroll_divisor_idx;
+        if (keycode == SCROLL_DIVISOR_1) {
+            keyboard_config.scroll_divisor_idx = 0;
+        } else if (keycode == SCROLL_DIVISOR_2) {
+            keyboard_config.scroll_divisor_idx = 1;
+        } else if (keycode == SCROLL_DIVISOR_3) {
+            keyboard_config.scroll_divisor_idx = 2;
+        }
+
+        if (old_dpi_config != keyboard_config.dpi_config ||
+                old_scroll_divisor_idx != keyboard_config.scroll_divisor_idx) {
             eeconfig_update_kb(keyboard_config.raw);
-            pointing_device_set_cpi(dpi_array[keyboard_config.dpi_config]);
-	}
+            adjust_cpi_for_drag_scroll();
+        }
     }
 
 
@@ -168,10 +190,13 @@ void keyboard_pre_init_kb(void) {
     keyboard_pre_init_user();
 }
 
-void pointing_device_init_kb(void) { pointing_device_set_cpi(dpi_array[keyboard_config.dpi_config]); }
+void pointing_device_init_kb(void) {
+    pointing_device_set_cpi(dpi_array[keyboard_config.dpi_config]);
+}
 
 void eeconfig_init_kb(void) {
     keyboard_config.dpi_config = PLOOPY_DPI_DEFAULT;
+    keyboard_config.scroll_divisor_idx = PLOOPY_SCROLL_DIVISOR_DEFAULT_IDX;
     eeconfig_update_kb(keyboard_config.raw);
     eeconfig_init_user();
 }
@@ -180,7 +205,8 @@ void matrix_init_kb(void) {
     // is safe to just read DPI setting since matrix init
     // comes before pointing device init.
     keyboard_config.raw = eeconfig_read_kb();
-    if (keyboard_config.dpi_config > DPI_OPTION_SIZE) {
+    if (keyboard_config.dpi_config >= DPI_OPTION_SIZE ||
+            keyboard_config.scroll_divisor_idx >= NUM_SCROLL_DIVISORS) {
         eeconfig_init_kb();
     }
     matrix_init_user();
