@@ -58,6 +58,7 @@ uint16_t          dpi_array[] = PLOOPY_DPI_OPTIONS;
 
 // Trackball State
 bool     is_drag_scroll    = false;
+bool     is_macos          = false;
 
 // drag scroll divisor state
 int8_t drag_scroll_x_semaphore = 0;
@@ -130,6 +131,34 @@ bool process_record_kb(uint16_t keycode, keyrecord_t* record) {
             eeconfig_update_kb(keyboard_config.raw);
             pointing_device_set_cpi(dpi_array[keyboard_config.dpi_config]);
         }
+    }
+
+    if (keycode == MAC && record->event.pressed) {
+        is_macos ^= 1;
+        return false;
+    }
+
+    if (keycode == COPY) {
+        if (record->event.pressed) {
+            register_code16(is_macos ? LCMD(KC_C) : LCTL(KC_C));
+        } else {
+            unregister_code16(is_macos ? LCMD(KC_C) : LCTL(KC_C));
+        }
+        return false;
+    } else if (keycode == CUT) {
+        if (record->event.pressed) {
+            register_code16(is_macos ? LCMD(KC_X) : LCTL(KC_X));
+        } else {
+            unregister_code16(is_macos ? LCMD(KC_X) : LCTL(KC_X));
+        }
+        return false;
+    } else if (keycode == PASTE) {
+        if (record->event.pressed) {
+            register_code16(is_macos ? LCMD(KC_V) : LCTL(KC_V));
+        } else {
+            unregister_code16(is_macos ? LCMD(KC_V) : LCTL(KC_V));
+        }
+        return false;
     }
 
 

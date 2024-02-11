@@ -9,7 +9,11 @@
     {"name": "DPI 1", "title": "DPI 1", "shortName": "DPI 1"},
     {"name": "DPI 2", "title": "DPI 2", "shortName": "DPI 2"},
     {"name": "DPI 3", "title": "DPI 3", "shortName": "DPI 3"},
-    {"name": "DPI 4", "title": "DPI 4", "shortName": "DPI 4"}
+    {"name": "DPI 4", "title": "DPI 4", "shortName": "DPI 4"},
+    {"name": "Toggle MacOS Mode", "title": "Toggle MacOS Mode", "shortName": "MacOS"},
+    {"name": "Copy", "title": "Copy", "shortName": "Copy"},
+    {"name": "Cut", "title": "Cut", "shortName": "Cut"},
+    {"name": "Paste", "title": "Paste", "shortName": "Paste"}
   ],
   "matrix": {"rows": 1, "cols": 6},
   "layouts": {

@@ -38,4 +38,8 @@ enum ploopy_keycodes {
     DPI_2,
     DPI_3,
     DPI_4,
+    MAC,
+    COPY,
+    CUT,
+    PASTE,
 };
