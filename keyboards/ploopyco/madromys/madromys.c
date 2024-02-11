@@ -46,6 +46,9 @@
 #ifndef PLOOPY_DRAGSCROLL_INVERT
 #    define PLOOPY_DRAGSCROLL_INVERT 1
 #endif
+#ifndef PLOOPY_DRAGSCROLL_ANY_KEY_TOGGLES
+#    define PLOOPY_DRAGSCROLL_ANY_KEY_TOGGLES 0
+#endif
 
 keyboard_config_t keyboard_config;
 uint16_t          dpi_array[] = PLOOPY_DPI_OPTIONS;
@@ -58,6 +61,9 @@ uint16_t          dpi_array[] = PLOOPY_DPI_OPTIONS;
 
 // Trackball State
 bool     is_drag_scroll    = false;
+#if !PLOOPY_DRAGSCROLL_MOMENTARY && PLOOPY_DRAGSCROLL_ANY_KEY_TOGGLES
+uint16_t last_keycode_while_in_drag_scroll = KC_NO;
+#endif
 
 // drag scroll divisor state
 int8_t drag_scroll_x_semaphore = 0;
@@ -107,7 +113,28 @@ report_mouse_t pointing_device_task_kb(report_mouse_t mouse_report) {
     return pointing_device_task_user(mouse_report);
 }
 
+void adjust_cpi_for_drag_scroll(void) {
+#ifdef PLOOPY_DRAGSCROLL_FIXED
+        pointing_device_set_cpi(is_drag_scroll ? PLOOPY_DRAGSCROLL_DPI : dpi_array[keyboard_config.dpi_config]);
+#else
+        pointing_device_set_cpi(is_drag_scroll ? (dpi_array[keyboard_config.dpi_config] * PLOOPY_DRAGSCROLL_MULTIPLIER) : dpi_array[keyboard_config.dpi_config]);
+#endif
+}
+
 bool process_record_kb(uint16_t keycode, keyrecord_t* record) {
+#if !PLOOPY_DRAGSCROLL_MOMENTARY && PLOOPY_DRAGSCROLL_ANY_KEY_TOGGLES
+    if (is_drag_scroll && record->event.pressed) {
+        last_keycode_while_in_drag_scroll = keycode;
+        is_drag_scroll ^= 1;
+        adjust_cpi_for_drag_scroll();
+        return false;
+    }
+    if (keycode == last_keycode_while_in_drag_scroll && !record->event.pressed) {
+        last_keycode_while_in_drag_scroll = KC_NO;
+        return false;
+    }
+#endif
+
     if (!process_record_user(keycode, record)) {
         return false;
     }
@@ -125,11 +152,7 @@ bool process_record_kb(uint16_t keycode, keyrecord_t* record) {
         {
             is_drag_scroll ^= 1;
         }
-#ifdef PLOOPY_DRAGSCROLL_FIXED
-        pointing_device_set_cpi(is_drag_scroll ? PLOOPY_DRAGSCROLL_DPI : dpi_array[keyboard_config.dpi_config]);
-#else
-        pointing_device_set_cpi(is_drag_scroll ? (dpi_array[keyboard_config.dpi_config] * PLOOPY_DRAGSCROLL_MULTIPLIER) : dpi_array[keyboard_config.dpi_config]);
-#endif
+        adjust_cpi_for_drag_scroll();
     }
 
     return true;
