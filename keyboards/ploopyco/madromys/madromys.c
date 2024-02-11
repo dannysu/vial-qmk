@@ -74,6 +74,19 @@ uint16_t last_keycode_while_in_drag_scroll = KC_NO;
 float scroll_accumulated_h = 0;
 float scroll_accumulated_v = 0;
 
+void adjust_cpi_for_drag_scroll(void) {
+    pointing_device_set_cpi(is_drag_scroll ? PLOOPY_DRAGSCROLL_DPI : dpi_array[keyboard_config.dpi_config]);
+}
+
+void toggle_drag_scroll(void) {
+    is_drag_scroll ^= 1;
+    adjust_cpi_for_drag_scroll();
+    if (!is_drag_scroll) {
+        scroll_accumulated_h = 0;
+        scroll_accumulated_v = 0;
+    }
+}
+
 report_mouse_t pointing_device_task_kb(report_mouse_t mouse_report) {
     if (is_drag_scroll) {
         // Calculate and accumulate scroll values based on mouse movement and divisors
@@ -103,16 +116,11 @@ report_mouse_t pointing_device_task_kb(report_mouse_t mouse_report) {
     return pointing_device_task_user(mouse_report);
 }
 
-void adjust_cpi_for_drag_scroll(void) {
-    pointing_device_set_cpi(is_drag_scroll ? PLOOPY_DRAGSCROLL_DPI : dpi_array[keyboard_config.dpi_config]);
-}
-
 bool process_record_kb(uint16_t keycode, keyrecord_t* record) {
 #if !PLOOPY_DRAGSCROLL_MOMENTARY && PLOOPY_DRAGSCROLL_ANY_MOUSE_KEYCODE_TOGGLES_OFF
     if (is_drag_scroll && record->event.pressed && IS_MOUSE_KEYCODE(keycode)) {
         last_keycode_while_in_drag_scroll = keycode;
-        is_drag_scroll ^= 1;
-        adjust_cpi_for_drag_scroll();
+        toggle_drag_scroll();
         return false;
     }
     if (keycode == last_keycode_while_in_drag_scroll && !record->event.pressed) {
@@ -158,12 +166,12 @@ bool process_record_kb(uint16_t keycode, keyrecord_t* record) {
 
     if (keycode == DRAG_SCROLL) {
 #if !PLOOPY_DRAGSCROLL_MOMENTARY
-        if (record->event.pressed)
-#endif
-        {
-            is_drag_scroll ^= 1;
+        if (record->event.pressed) {
+            toggle_drag_scroll();
         }
-        adjust_cpi_for_drag_scroll();
+#else
+        toggle_drag_scroll();
+#endif
     }
 
     return true;
