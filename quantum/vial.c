@@ -292,36 +292,54 @@ void vial_handle_cmd(uint8_t *msg, uint8_t length) {
 
 uint16_t g_vial_magic_keycode_override;
 
-void vial_keycode_down(uint16_t keycode) {
-    g_vial_magic_keycode_override = keycode;
+__attribute__((weak)) bool vial_process_keycode_down(uint16_t keycode) {
+    return true;
+}
 
-    if (keycode <= QK_MODS_MAX) {
-        register_code16(keycode);
-    } else {
-        action_exec((keyevent_t){
-            .type = KEY_EVENT,
-            .key = (keypos_t){.row = VIAL_MATRIX_MAGIC, .col = VIAL_MATRIX_MAGIC}, .pressed = 1, .time = (timer_read() | 1) /* time should not be 0 */
-        });
+void vial_keycode_down(uint16_t keycode) {
+    if (vial_process_keycode_down(keycode)) {
+        g_vial_magic_keycode_override = keycode;
+
+        if (keycode <= QK_MODS_MAX) {
+            register_code16(keycode);
+        } else {
+            action_exec((keyevent_t){
+                .type = KEY_EVENT,
+                .key = (keypos_t){.row = VIAL_MATRIX_MAGIC, .col = VIAL_MATRIX_MAGIC}, .pressed = 1, .time = (timer_read() | 1) /* time should not be 0 */
+            });
+        }
     }
+}
+
+__attribute__((weak)) bool vial_process_keycode_up(uint16_t keycode) {
+    return true;
 }
 
 void vial_keycode_up(uint16_t keycode) {
-    g_vial_magic_keycode_override = keycode;
+    if (vial_process_keycode_up(keycode)) {
+        g_vial_magic_keycode_override = keycode;
 
-    if (keycode <= QK_MODS_MAX) {
-        unregister_code16(keycode);
-    } else {
-        action_exec((keyevent_t){
-            .type = KEY_EVENT,
-            .key = (keypos_t){.row = VIAL_MATRIX_MAGIC, .col = VIAL_MATRIX_MAGIC}, .pressed = 0, .time = (timer_read() | 1) /* time should not be 0 */
-        });
+        if (keycode <= QK_MODS_MAX) {
+            unregister_code16(keycode);
+        } else {
+            action_exec((keyevent_t){
+                .type = KEY_EVENT,
+                .key = (keypos_t){.row = VIAL_MATRIX_MAGIC, .col = VIAL_MATRIX_MAGIC}, .pressed = 0, .time = (timer_read() | 1) /* time should not be 0 */
+            });
+        }
     }
 }
 
+__attribute__((weak)) bool vial_process_keycode_tap(uint16_t keycode) {
+    return true;
+}
+
 void vial_keycode_tap(uint16_t keycode) {
-    vial_keycode_down(keycode);
-    qs_wait_ms(QS_tap_code_delay);
-    vial_keycode_up(keycode);
+    if (vial_process_keycode_tap(keycode)) {
+        vial_keycode_down(keycode);
+        qs_wait_ms(QS_tap_code_delay);
+        vial_keycode_up(keycode);
+    }
 }
 
 #ifdef VIAL_TAP_DANCE_ENABLE
