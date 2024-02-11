@@ -181,6 +181,35 @@ bool process_record_kb(uint16_t keycode, keyrecord_t* record) {
     }
 #endif
 
+    if (keycode == MAC && record->event.pressed) {
+        keyboard_config.macos ^= 1;
+        eeconfig_update_kb(keyboard_config.raw);
+        return false;
+    }
+
+    if (keycode == COPY) {
+        if (record->event.pressed) {
+            register_code16((keyboard_config.macos) ? LCMD(KC_C) : LCTL(KC_C));
+        } else {
+            unregister_code16((keyboard_config.macos) ? LCMD(KC_C) : LCTL(KC_C));
+        }
+	return false;
+    } else if (keycode == CUT) {
+        if (record->event.pressed) {
+            register_code16((keyboard_config.macos) ? LCMD(KC_X) : LCTL(KC_X));
+        } else {
+            unregister_code16((keyboard_config.macos) ? LCMD(KC_X) : LCTL(KC_X));
+        }
+	return false;
+    } else if (keycode == PASTE) {
+        if (record->event.pressed) {
+            register_code16((keyboard_config.macos) ? LCMD(KC_V) : LCTL(KC_V));
+        } else {
+            unregister_code16((keyboard_config.macos) ? LCMD(KC_V) : LCTL(KC_V));
+        }
+	return false;
+    }
+
     if (!process_record_user(keycode, record)) {
         return false;
     }
@@ -218,7 +247,6 @@ bool process_record_kb(uint16_t keycode, keyrecord_t* record) {
             adjust_cpi_for_drag_scroll();
         }
     }
-
 
     if (keycode == DRAG_SCROLL) {
 #if !PLOOPY_DRAGSCROLL_MOMENTARY
@@ -262,6 +290,7 @@ void pointing_device_init_kb(void) {
 void eeconfig_init_kb(void) {
     keyboard_config.dpi_config = PLOOPY_DPI_DEFAULT;
     keyboard_config.scroll_divisor_idx = PLOOPY_SCROLL_DIVISOR_DEFAULT_IDX;
+    keyboard_config.macos = false;
     eeconfig_update_kb(keyboard_config.raw);
     eeconfig_init_user();
 }
