@@ -32,6 +32,10 @@ extern keyboard_config_t keyboard_config;
 extern uint16_t          dpi_array[];
 
 enum ploopy_keycodes {
-    DPI_CONFIG = QK_KB_0,
+    CYCLE_DPI = QK_KB_0,
     DRAG_SCROLL,
+    DPI_1,
+    DPI_2,
+    DPI_3,
+    DPI_4,
 };
