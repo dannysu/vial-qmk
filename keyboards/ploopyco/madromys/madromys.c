@@ -139,11 +139,26 @@ bool process_record_kb(uint16_t keycode, keyrecord_t* record) {
         return false;
     }
 
-    if (keycode == DPI_CONFIG && record->event.pressed) {
-        keyboard_config.dpi_config = (keyboard_config.dpi_config + 1) % DPI_OPTION_SIZE;
-        eeconfig_update_kb(keyboard_config.raw);
-        pointing_device_set_cpi(dpi_array[keyboard_config.dpi_config]);
+    if (record->event.pressed) {
+        uint8_t old_dpi_config = keyboard_config.dpi_config;
+        if (keycode == CYCLE_DPI) {
+            keyboard_config.dpi_config = (keyboard_config.dpi_config + 1) % DPI_OPTION_SIZE;
+        } else if (keycode == DPI_1) {
+            keyboard_config.dpi_config = 0;
+        } else if (keycode == DPI_2) {
+            keyboard_config.dpi_config = 1;
+        } else if (keycode == DPI_3) {
+            keyboard_config.dpi_config = 2;
+        } else if (keycode == DPI_4) {
+            keyboard_config.dpi_config = 3;
+	}
+
+	if (old_dpi_config != keyboard_config.dpi_config) {
+            eeconfig_update_kb(keyboard_config.raw);
+            pointing_device_set_cpi(dpi_array[keyboard_config.dpi_config]);
+	}
     }
+
 
     if (keycode == DRAG_SCROLL) {
 #if !PLOOPY_DRAGSCROLL_MOMENTARY
