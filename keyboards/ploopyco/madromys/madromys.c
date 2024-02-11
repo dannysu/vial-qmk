@@ -46,8 +46,8 @@
 #ifndef PLOOPY_DRAGSCROLL_INVERT
 #    define PLOOPY_DRAGSCROLL_INVERT 1
 #endif
-#ifndef PLOOPY_DRAGSCROLL_ANY_KEY_TOGGLES
-#    define PLOOPY_DRAGSCROLL_ANY_KEY_TOGGLES 0
+#ifndef PLOOPY_DRAGSCROLL_ANY_MOUSE_KEYCODE_TOGGLES_OFF
+#    define PLOOPY_DRAGSCROLL_ANY_MOUSE_KEYCODE_TOGGLES_OFF 0
 #endif
 
 keyboard_config_t keyboard_config;
@@ -61,7 +61,7 @@ uint16_t          dpi_array[] = PLOOPY_DPI_OPTIONS;
 
 // Trackball State
 bool     is_drag_scroll    = false;
-#if !PLOOPY_DRAGSCROLL_MOMENTARY && PLOOPY_DRAGSCROLL_ANY_KEY_TOGGLES
+#if !PLOOPY_DRAGSCROLL_MOMENTARY && PLOOPY_DRAGSCROLL_ANY_MOUSE_KEYCODE_TOGGLES_OFF
 uint16_t last_keycode_while_in_drag_scroll = KC_NO;
 #endif
 
@@ -115,15 +115,15 @@ report_mouse_t pointing_device_task_kb(report_mouse_t mouse_report) {
 
 void adjust_cpi_for_drag_scroll(void) {
 #ifdef PLOOPY_DRAGSCROLL_FIXED
-        pointing_device_set_cpi(is_drag_scroll ? PLOOPY_DRAGSCROLL_DPI : dpi_array[keyboard_config.dpi_config]);
+    pointing_device_set_cpi(is_drag_scroll ? PLOOPY_DRAGSCROLL_DPI : dpi_array[keyboard_config.dpi_config]);
 #else
-        pointing_device_set_cpi(is_drag_scroll ? (dpi_array[keyboard_config.dpi_config] * PLOOPY_DRAGSCROLL_MULTIPLIER) : dpi_array[keyboard_config.dpi_config]);
+    pointing_device_set_cpi(is_drag_scroll ? (dpi_array[keyboard_config.dpi_config] * PLOOPY_DRAGSCROLL_MULTIPLIER) : dpi_array[keyboard_config.dpi_config]);
 #endif
 }
 
 bool process_record_kb(uint16_t keycode, keyrecord_t* record) {
-#if !PLOOPY_DRAGSCROLL_MOMENTARY && PLOOPY_DRAGSCROLL_ANY_KEY_TOGGLES
-    if (is_drag_scroll && record->event.pressed) {
+#if !PLOOPY_DRAGSCROLL_MOMENTARY && PLOOPY_DRAGSCROLL_ANY_MOUSE_KEYCODE_TOGGLES_OFF
+    if (is_drag_scroll && record->event.pressed && IS_MOUSE_KEYCODE(keycode)) {
         last_keycode_while_in_drag_scroll = keycode;
         is_drag_scroll ^= 1;
         adjust_cpi_for_drag_scroll();
