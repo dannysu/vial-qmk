@@ -95,13 +95,36 @@ report_mouse_t pointing_device_task_kb(report_mouse_t mouse_report) {
         scroll_accumulated_v += (float)mouse_report.y / divisor;
 
         // Assign integer parts of accumulated scroll values to the mouse report
-        mouse_report.h = (int8_t)scroll_accumulated_h;
+        int8_t h_amount = 0;
+        if ((int8_t)scroll_accumulated_h > 0) {
 #if PLOOPY_DRAGSCROLL_INVERT
-        // Invert vertical scroll direction
-        mouse_report.v = -(int8_t)scroll_accumulated_v;
+            h_amount = 1;
 #else
-        mouse_report.v = (int8_t)scroll_accumulated_v;
+            h_amount = -1;
 #endif
+        } else if ((int8_t)scroll_accumulated_h < 0) {
+#if PLOOPY_DRAGSCROLL_INVERT
+            h_amount = -1;
+#else
+            h_amount = 1;
+#endif
+        }
+        mouse_report.h = h_amount;
+        int8_t v_amount = 0;
+        if ((int8_t)scroll_accumulated_v > 0) {
+#if PLOOPY_DRAGSCROLL_INVERT
+            v_amount = -1;
+#else
+            v_amount = 1;
+#endif
+        } else if ((int8_t)scroll_accumulated_v < 0) {
+#if PLOOPY_DRAGSCROLL_INVERT
+            v_amount = 1;
+#else
+            v_amount = -1;
+#endif
+        }
+        mouse_report.v = v_amount;
 
         // Update accumulated scroll values by subtracting the integer parts
         scroll_accumulated_h -= (int8_t)scroll_accumulated_h;
