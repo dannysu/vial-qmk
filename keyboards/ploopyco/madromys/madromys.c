@@ -19,6 +19,8 @@
 #include "qmk_settings.h"
 #include "madromys.h"
 
+#include <math.h>
+
 // DPI Settings
 #ifndef PLOOPY_DPI_OPTIONS
 #    define PLOOPY_DPI_OPTIONS \
@@ -32,8 +34,9 @@
 #endif
 
 // Drag Scroll Settings
+#define PLOOPY_BALL_DIAMETER_INCHES 1.75
 #ifndef PLOOPY_DRAGSCROLL_DPI
-#    define PLOOPY_DRAGSCROLL_DPI 800
+#    define PLOOPY_DRAGSCROLL_DPI 100
 #endif
 #ifndef PLOOPY_DRAGSCROLL_INVERT
 #    define PLOOPY_DRAGSCROLL_INVERT 1
@@ -44,22 +47,26 @@
 #ifndef PLOOPY_DRAGSCROLL_ANY_MOUSE_KEYCODE_TOGGLES_OFF
 #    define PLOOPY_DRAGSCROLL_ANY_MOUSE_KEYCODE_TOGGLES_OFF 1
 #endif
-#ifndef PLOOPY_SCROLL_DIVISORS
-#    define PLOOPY_SCROLL_DIVISORS \
-        { 256.0, 128.0, 64.0 }
-#    ifndef PLOOPY_SCROLL_DIVISOR_DEFAULT
-#        define PLOOPY_SCROLL_DIVISOR_DEFAULT 1
+// Specifies the amount one has to turn the ball to trigger a scroll
+#ifndef PLOOPY_SCROLL_THRESHOLDS
+#    define PLOOPY_SCROLL_THRESHOLDS \
+        { 1/18.0, 1/9.0, 1/6.0 }
+#    ifndef PLOOPY_SCROLL_THRESHOLD_DEFAULT_IDX
+#        define PLOOPY_SCROLL_THRESHOLD_DEFAULT_IDX 1
 #    endif
 #endif
-#ifndef PLOOPY_SCROLL_DIVISOR_DEFAULT_IDX
-#    define PLOOPY_SCROLL_DIVISOR_DEFAULT_IDX 0
+#ifndef PLOOPY_SCROLL_THRESHOLD_DEFAULT_IDX
+#    define PLOOPY_SCROLL_THRESHOLD_DEFAULT_IDX 0
+#endif
+#ifndef PLOOPY_ACCUMULATED_SCROLL_TIMEOUT
+#    define PLOOPY_ACCUMULATED_SCROLL_TIMEOUT 700
 #endif
 
 keyboard_config_t keyboard_config;
 uint16_t          dpi_array[] = PLOOPY_DPI_OPTIONS;
 #define DPI_OPTION_SIZE (sizeof(dpi_array) / sizeof(uint16_t))
-float             scroll_divisors[] = PLOOPY_SCROLL_DIVISORS;
-#define NUM_SCROLL_DIVISORS (sizeof(scroll_divisors) / sizeof(float))
+float             scroll_thresholds[] = PLOOPY_SCROLL_THRESHOLDS;
+#define NUM_SCROLL_THRESHOLDS (sizeof(scroll_thresholds) / sizeof(float))
 
 // TODO: Implement libinput profiles
 // https://wayland.freedesktop.org/libinput/doc/latest/pointer-acceleration.html
@@ -75,6 +82,7 @@ uint16_t last_keycode_while_in_drag_scroll = KC_NO;
 
 float scroll_accumulated_h = 0;
 float scroll_accumulated_v = 0;
+uint32_t last_accumulated_time = 0;
 
 void adjust_cpi_for_drag_scroll(void) {
     pointing_device_set_cpi(is_drag_scroll ? PLOOPY_DRAGSCROLL_DPI : dpi_array[keyboard_config.dpi_config]);
@@ -97,20 +105,30 @@ void tap_keycode(uint16_t keycode) {
 
 report_mouse_t pointing_device_task_kb(report_mouse_t mouse_report) {
     if (is_drag_scroll) {
-        // Calculate and accumulate scroll values based on mouse movement and divisors
-        float divisor = scroll_divisors[keyboard_config.scroll_divisor_idx];
-        scroll_accumulated_h += (float)mouse_report.x / divisor;
-        scroll_accumulated_v += (float)mouse_report.y / divisor;
+        // Discard stale accumulated values
+        if (timer_elapsed32(last_accumulated_time) > PLOOPY_ACCUMULATED_SCROLL_TIMEOUT) {
+            scroll_accumulated_h = 0;
+            scroll_accumulated_v = 0;
+        }
+        // Accumulate the scroll values
+        scroll_accumulated_h += (float)mouse_report.x;
+        scroll_accumulated_v += (float)mouse_report.y;
+        last_accumulated_time = timer_read32();
+
+        // Calculate the amount of dots that needs to be accumulated to trigger
+        // a scroll
+        float fraction_of_circumference = scroll_thresholds[keyboard_config.scroll_threshold_idx];
+        float dots_to_trigger = fraction_of_circumference * (M_PI * PLOOPY_BALL_DIAMETER_INCHES * PLOOPY_DRAGSCROLL_DPI);
 
         // Assign integer parts of accumulated scroll values to the mouse report
         int8_t h_amount = 0;
-        if ((int8_t)scroll_accumulated_h > 0) {
+        if (scroll_accumulated_h > dots_to_trigger) {
 #if PLOOPY_DRAGSCROLL_INVERT
             h_amount = 1;
 #else
             h_amount = -1;
 #endif
-        } else if ((int8_t)scroll_accumulated_h < 0) {
+        } else if (scroll_accumulated_h < -dots_to_trigger) {
 #if PLOOPY_DRAGSCROLL_INVERT
             h_amount = -1;
 #else
@@ -130,13 +148,13 @@ report_mouse_t pointing_device_task_kb(report_mouse_t mouse_report) {
             mouse_report.h = h_amount;
         }
         int8_t v_amount = 0;
-        if ((int8_t)scroll_accumulated_v > 0) {
+        if (scroll_accumulated_v > dots_to_trigger) {
 #if PLOOPY_DRAGSCROLL_INVERT
             v_amount = -1;
 #else
             v_amount = 1;
 #endif
-        } else if ((int8_t)scroll_accumulated_v < 0) {
+        } else if (scroll_accumulated_v < -dots_to_trigger) {
 #if PLOOPY_DRAGSCROLL_INVERT
             v_amount = 1;
 #else
@@ -157,8 +175,13 @@ report_mouse_t pointing_device_task_kb(report_mouse_t mouse_report) {
         }
 
         // Update accumulated scroll values by subtracting the integer parts
-        scroll_accumulated_h -= (int8_t)scroll_accumulated_h;
-        scroll_accumulated_v -= (int8_t)scroll_accumulated_v;
+#if PLOOPY_DRAGSCROLL_INVERT
+        scroll_accumulated_h -= h_amount * dots_to_trigger;
+        scroll_accumulated_v -= -v_amount * dots_to_trigger;
+#else
+        scroll_accumulated_h -= -h_amount * dots_to_trigger;
+        scroll_accumulated_v -= v_amount * dots_to_trigger;
+#endif
 
         // Clear the X and Y values of the mouse report
         mouse_report.x = 0;
@@ -203,17 +226,17 @@ bool process_record_kb(uint16_t keycode, keyrecord_t* record) {
             keyboard_config.dpi_config = 3;
         }
 
-        uint8_t old_scroll_divisor_idx = keyboard_config.scroll_divisor_idx;
-        if (keycode == SCROLL_DIVISOR_1) {
-            keyboard_config.scroll_divisor_idx = 0;
-        } else if (keycode == SCROLL_DIVISOR_2) {
-            keyboard_config.scroll_divisor_idx = 1;
-        } else if (keycode == SCROLL_DIVISOR_3) {
-            keyboard_config.scroll_divisor_idx = 2;
+        uint8_t old_scroll_threshold_idx = keyboard_config.scroll_threshold_idx;
+        if (keycode == SCROLL_THRESHOLD_1) {
+            keyboard_config.scroll_threshold_idx = 0;
+        } else if (keycode == SCROLL_THRESHOLD_2) {
+            keyboard_config.scroll_threshold_idx = 1;
+        } else if (keycode == SCROLL_THRESHOLD_3) {
+            keyboard_config.scroll_threshold_idx = 2;
         }
 
         if (old_dpi_config != keyboard_config.dpi_config ||
-                old_scroll_divisor_idx != keyboard_config.scroll_divisor_idx) {
+                old_scroll_threshold_idx != keyboard_config.scroll_threshold_idx) {
             eeconfig_update_kb(keyboard_config.raw);
             adjust_cpi_for_drag_scroll();
         }
@@ -261,7 +284,7 @@ void pointing_device_init_kb(void) {
 
 void eeconfig_init_kb(void) {
     keyboard_config.dpi_config = PLOOPY_DPI_DEFAULT;
-    keyboard_config.scroll_divisor_idx = PLOOPY_SCROLL_DIVISOR_DEFAULT_IDX;
+    keyboard_config.scroll_threshold_idx = PLOOPY_SCROLL_THRESHOLD_DEFAULT_IDX;
     eeconfig_update_kb(keyboard_config.raw);
     eeconfig_init_user();
 }
@@ -271,7 +294,7 @@ void matrix_init_kb(void) {
     // comes before pointing device init.
     keyboard_config.raw = eeconfig_read_kb();
     if (keyboard_config.dpi_config >= DPI_OPTION_SIZE ||
-            keyboard_config.scroll_divisor_idx >= NUM_SCROLL_DIVISORS) {
+            keyboard_config.scroll_threshold_idx >= NUM_SCROLL_THRESHOLDS) {
         eeconfig_init_kb();
     }
     matrix_init_user();
