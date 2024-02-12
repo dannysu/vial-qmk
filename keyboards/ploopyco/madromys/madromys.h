@@ -42,4 +42,5 @@ enum ploopy_keycodes {
     SCROLL_DIVISOR_1,
     SCROLL_DIVISOR_2,
     SCROLL_DIVISOR_3,
+    TOGGLE_KEY_SCROLL,
 };

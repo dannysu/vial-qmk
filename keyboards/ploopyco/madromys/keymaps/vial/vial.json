@@ -12,7 +12,8 @@
     {"name": "Toggle Drag Scroll", "title": "Toggle Drag Scroll", "shortName": "Drag\nScrl"},
     {"name": "Scroll Divisor 1", "title": "Scroll Divisor 1", "shortName": "Scrl\nDiv 1"},
     {"name": "Scroll Divisor 2", "title": "Scroll Divisor 2", "shortName": "Scrl\nDiv 2"},
-    {"name": "Scroll Divisor 3", "title": "Scroll Divisor 3", "shortName": "Scrl\nDiv 3"}
+    {"name": "Scroll Divisor 3", "title": "Scroll Divisor 3", "shortName": "Scrl\nDiv 3"},
+    {"name": "Toggle Scroll With Up/Down Keys", "title": "Toggle Scroll With Up/Down Keys", "shortName": "Key\nScrl"}
   ],
   "matrix": {"rows": 1, "cols": 6},
   "layouts": {

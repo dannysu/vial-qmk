@@ -16,6 +16,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "qmk_settings.h"
 #include "madromys.h"
 
 // DPI Settings
@@ -67,6 +68,7 @@ float             scroll_divisors[] = PLOOPY_SCROLL_DIVISORS;
 
 // Trackball State
 bool     is_drag_scroll    = false;
+bool     is_key_scroll     = false;
 #if !PLOOPY_DRAGSCROLL_MOMENTARY && PLOOPY_DRAGSCROLL_ANY_MOUSE_KEYCODE_TOGGLES_OFF
 uint16_t last_keycode_while_in_drag_scroll = KC_NO;
 #endif
@@ -85,6 +87,12 @@ void toggle_drag_scroll(void) {
         scroll_accumulated_h = 0;
         scroll_accumulated_v = 0;
     }
+}
+
+void tap_keycode(uint16_t keycode) {
+    register_code16(keycode);
+    qs_wait_ms(QS_tap_code_delay);
+    unregister_code16(keycode);
 }
 
 report_mouse_t pointing_device_task_kb(report_mouse_t mouse_report) {
@@ -109,7 +117,18 @@ report_mouse_t pointing_device_task_kb(report_mouse_t mouse_report) {
             h_amount = 1;
 #endif
         }
-        mouse_report.h = h_amount;
+        if (is_key_scroll) {
+            if (h_amount != 0) {
+#if PLOOPY_DRAGSCROLL_INVERT
+                tap_keycode(h_amount > 0 ? KC_RIGHT : KC_LEFT);
+#else
+                tap_keycode(h_amount > 0 ? KC_LEFT : KC_RIGHT);
+#endif
+            }
+            mouse_report.h = 0;
+        } else {
+            mouse_report.h = h_amount;
+        }
         int8_t v_amount = 0;
         if ((int8_t)scroll_accumulated_v > 0) {
 #if PLOOPY_DRAGSCROLL_INVERT
@@ -124,7 +143,18 @@ report_mouse_t pointing_device_task_kb(report_mouse_t mouse_report) {
             v_amount = -1;
 #endif
         }
-        mouse_report.v = v_amount;
+        if (is_key_scroll) {
+            if (v_amount != 0) {
+#if PLOOPY_DRAGSCROLL_INVERT
+                tap_keycode(v_amount > 0 ? KC_UP : KC_DOWN);
+#else
+                tap_keycode(v_amount > 0 ? KC_DOWN : KC_UP);
+#endif
+            }
+            mouse_report.v = 0;
+        } else {
+            mouse_report.v = v_amount;
+        }
 
         // Update accumulated scroll values by subtracting the integer parts
         scroll_accumulated_h -= (int8_t)scroll_accumulated_h;
@@ -156,6 +186,10 @@ bool process_record_kb(uint16_t keycode, keyrecord_t* record) {
     }
 
     if (record->event.pressed) {
+        if (keycode == TOGGLE_KEY_SCROLL) {
+            is_key_scroll ^= 1;
+        }
+
         uint8_t old_dpi_config = keyboard_config.dpi_config;
         if (keycode == CYCLE_DPI) {
             keyboard_config.dpi_config = (keyboard_config.dpi_config + 1) % DPI_OPTION_SIZE;
