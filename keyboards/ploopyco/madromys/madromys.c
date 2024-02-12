@@ -168,6 +168,25 @@ report_mouse_t pointing_device_task_kb(report_mouse_t mouse_report) {
     return pointing_device_task_user(mouse_report);
 }
 
+#if !PLOOPY_DRAGSCROLL_MOMENTARY && PLOOPY_DRAGSCROLL_ANY_MOUSE_KEYCODE_TOGGLES_OFF
+bool vial_process_keycode_down(uint16_t keycode) {
+    if (is_drag_scroll && IS_MOUSE_KEYCODE(keycode)) {
+        last_keycode_while_in_drag_scroll = keycode;
+        toggle_drag_scroll();
+        return false;
+    }
+    return true;
+}
+
+bool vial_process_keycode_up(uint16_t keycode) {
+    if (keycode == last_keycode_while_in_drag_scroll) {
+        last_keycode_while_in_drag_scroll = KC_NO;
+        return false;
+    }
+    return true;
+}
+#endif
+
 bool process_record_kb(uint16_t keycode, keyrecord_t* record) {
 #if !PLOOPY_DRAGSCROLL_MOMENTARY && PLOOPY_DRAGSCROLL_ANY_MOUSE_KEYCODE_TOGGLES_OFF
     if (is_drag_scroll && record->event.pressed && IS_MOUSE_KEYCODE(keycode)) {
@@ -193,21 +212,21 @@ bool process_record_kb(uint16_t keycode, keyrecord_t* record) {
         } else {
             unregister_code16((keyboard_config.macos) ? LCMD(KC_C) : LCTL(KC_C));
         }
-	return false;
+        return false;
     } else if (keycode == CUT) {
         if (record->event.pressed) {
             register_code16((keyboard_config.macos) ? LCMD(KC_X) : LCTL(KC_X));
         } else {
             unregister_code16((keyboard_config.macos) ? LCMD(KC_X) : LCTL(KC_X));
         }
-	return false;
+        return false;
     } else if (keycode == PASTE) {
         if (record->event.pressed) {
             register_code16((keyboard_config.macos) ? LCMD(KC_V) : LCTL(KC_V));
         } else {
             unregister_code16((keyboard_config.macos) ? LCMD(KC_V) : LCTL(KC_V));
         }
-	return false;
+        return false;
     }
 
     if (!process_record_user(keycode, record)) {
